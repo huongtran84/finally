@@ -22,9 +22,9 @@ The user runs a single Docker command (or a provided start script). A browser op
 ### What the User Can Do
 
 - **Watch prices stream** — prices flash green (uptick) or red (downtick) with subtle CSS animations that fade
-- **View sparkline mini-charts** — price action beside each ticker in the watchlist, accumulated on the frontend from the SSE stream since page load (sparklines fill in progressively)
+- **View sparkline mini-charts** — price action beside each ticker in the watchlist. On page load, the frontend fetches recent price history from `GET /api/prices/history` to populate sparklines immediately, then appends new prices from SSE in real time
 - **Click a ticker** to see a larger detailed chart in the main chart area
-- **Buy and sell shares** — market orders only, instant fill at current price, no fees, no confirmation dialog
+- **Buy and sell shares** — market orders only, instant fill at current price, no fees, fractional shares supported. A brief toast notification confirms each executed trade (ticker, side, quantity, price)
 - **Monitor their portfolio** — a heatmap (treemap) showing positions sized by weight and colored by P&L, plus a P&L chart tracking total portfolio value over time
 - **View a positions table** — ticker, quantity, average cost, current price, unrealized P&L, % change
 - **Chat with the AI assistant** — ask about their portfolio, get analysis, and have the AI execute trades and manage the watchlist through natural language
@@ -130,6 +130,10 @@ MASSIVE_API_KEY=
 
 # Optional: Set to "true" for deterministic mock LLM responses (testing)
 LLM_MOCK=false
+
+# Optional: Override the LLM model (default: openrouter/openai/gpt-oss-120b)
+# Useful as a fallback if the default model or Cerebras provider is unavailable
+LLM_MODEL=openrouter/openai/gpt-oss-120b
 ```
 
 ### Behavior
@@ -137,6 +141,7 @@ LLM_MOCK=false
 - If `MASSIVE_API_KEY` is set and non-empty → backend uses Massive REST API for market data
 - If `MASSIVE_API_KEY` is absent or empty → backend uses the built-in market simulator
 - If `LLM_MOCK=true` → backend returns deterministic mock LLM responses (for E2E tests)
+- If `LLM_MODEL` is set → backend uses the specified model instead of the default `openrouter/openai/gpt-oss-120b`
 - The backend reads `.env` from the project root (mounted into the container or read via docker `--env-file`)
 
 ---
@@ -167,16 +172,26 @@ Both the simulator and the Massive client implement the same abstract interface.
 ### Shared Price Cache
 
 - A single background task (simulator or Massive poller) writes to an in-memory price cache
-- The cache holds the latest price, previous price, and timestamp for each ticker
+- The cache holds the latest price, previous price, timestamp, and a rolling history (last 50 prices) for each ticker
+- The rolling history is served via `GET /api/prices/history` so sparklines can populate immediately on page load
 - SSE streams read from this cache and push updates to connected clients
 - This architecture supports future multi-user scenarios without changes to the data layer
+
+### Dynamic Ticker Management
+
+When a ticker is added to (or removed from) the watchlist, the watchlist endpoint notifies the market data layer so it begins (or stops) generating/polling prices for that ticker immediately. The contract:
+
+- **Watchlist add** → market data source starts tracking the new ticker (simulator seeds it at a realistic price; Massive poller adds it to the next poll batch)
+- **Watchlist remove** → market data source stops tracking the ticker and removes it from the price cache
+- The market data layer exposes `add_ticker(ticker)` and `remove_ticker(ticker)` methods on the abstract interface for this purpose
 
 ### SSE Streaming
 
 - Endpoint: `GET /api/stream/prices`
 - Long-lived SSE connection; client uses native `EventSource` API
-- Server pushes price updates for all tickers known to the system at a regular cadence (~500ms) — in the single-user model this is equivalent to the user's watchlist
+- Server pushes price updates only when the price cache has new data (i.e., a price has actually changed) — not on a fixed cadence. This avoids sending duplicate data when the Massive API poll interval is longer than the SSE check interval
 - Each SSE event contains ticker, price, previous price, timestamp, and change direction
+- Each ticker also includes a `session_change_pct` field: the percentage change from the ticker's price when the backend started (since the simulator has no concept of trading days, "daily change" is meaningless — this is "change since session start")
 - Client handles reconnection automatically (EventSource has built-in retry)
 
 ---
@@ -225,7 +240,7 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 - `price` REAL
 - `executed_at` TEXT (ISO timestamp)
 
-**portfolio_snapshots** — Portfolio value over time (for P&L chart). Recorded every 30 seconds by a background task, and immediately after each trade execution.
+**portfolio_snapshots** — Portfolio value over time (for P&L chart). Recorded every 30 seconds by a background task, and immediately after each trade execution. Retention: the backend keeps the most recent 500 snapshots per user; older snapshots are pruned each time a new one is inserted.
 - `id` TEXT PRIMARY KEY (UUID)
 - `user_id` TEXT (default: `"default"`)
 - `total_value` REAL
@@ -251,13 +266,14 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 ### Market Data
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/stream/prices` | SSE stream of live price updates |
+| GET | `/api/stream/prices` | SSE stream of live price updates (push-on-change) |
+| GET | `/api/prices/history` | Rolling price history (last 50 per ticker) for sparkline bootstrap |
 
 ### Portfolio
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/portfolio` | Current positions, cash balance, total value, unrealized P&L |
-| POST | `/api/portfolio/trade` | Execute a trade: `{ticker, quantity, side}` |
+| POST | `/api/portfolio/trade` | Execute a trade: `{ticker, quantity, side}`. Returns `200` with trade confirmation on success, or `400` with `{error: "..."}` on validation failure (insufficient cash, insufficient shares, unknown ticker) |
 | GET | `/api/portfolio/history` | Portfolio value snapshots over time (for P&L chart) |
 
 ### Watchlist
@@ -290,9 +306,9 @@ There is an OPENROUTER_API_KEY in the .env file in the project root.
 When the user sends a chat message, the backend:
 
 1. Loads the user's current portfolio context (cash, positions with P&L, watchlist with live prices, total portfolio value)
-2. Loads recent conversation history from the `chat_messages` table
+2. Loads the last 20 messages of conversation history from the `chat_messages` table (this balances context quality with token budget)
 3. Constructs a prompt with a system message, portfolio context, conversation history, and the user's new message
-4. Calls the LLM via LiteLLM → OpenRouter, requesting structured output, using the cerebras-inference skill
+4. Calls the LLM via LiteLLM → OpenRouter, requesting structured output, using the cerebras-inference skill. The model is configurable via the `LLM_MODEL` env var (default: `openrouter/openai/gpt-oss-120b`)
 5. Parses the complete structured JSON response
 6. Auto-executes any trades or watchlist changes specified in the response
 7. Stores the message and executed actions in `chat_messages`
@@ -352,12 +368,12 @@ When `LLM_MOCK=true`, the backend returns deterministic mock responses instead o
 
 The frontend is a single-page application with a dense, terminal-inspired layout. The specific component architecture and layout system is up to the Frontend Engineer, but the UI should include these elements:
 
-- **Watchlist panel** — grid/table of watched tickers with: ticker symbol, current price (flashing green/red on change), daily change %, and a sparkline mini-chart (accumulated from SSE since page load)
+- **Watchlist panel** — grid/table of watched tickers with: ticker symbol, current price (flashing green/red on change), session change % (change since backend started), and a sparkline mini-chart (bootstrapped from `GET /api/prices/history` on page load, then extended with SSE data)
 - **Main chart area** — larger chart for the currently selected ticker, with at minimum price over time. Clicking a ticker in the watchlist selects it here.
 - **Portfolio heatmap** — treemap visualization where each rectangle is a position, sized by portfolio weight, colored by P&L (green = profit, red = loss)
 - **P&L chart** — line chart showing total portfolio value over time, using data from `portfolio_snapshots`
 - **Positions table** — tabular view of all positions: ticker, quantity, avg cost, current price, unrealized P&L, % change
-- **Trade bar** — simple input area: ticker field, quantity field, buy button, sell button. Market orders, instant fill.
+- **Trade bar** — simple input area: ticker field, quantity field (accepts decimals for fractional shares), buy button, sell button. Market orders, instant fill. On success, a brief toast notification confirms the trade (ticker, side, quantity, fill price). On failure, a toast shows the error message from the API (e.g., "Insufficient cash").
 - **AI chat panel** — docked/collapsible sidebar. Message input, scrolling conversation history, loading indicator while waiting for LLM response. Trade executions and watchlist changes shown inline as confirmations.
 - **Header** — portfolio total value (updating live), connection status indicator, cash balance
 
@@ -454,3 +470,22 @@ The container is designed to deploy to AWS App Runner, Render, or any container 
 - Portfolio visualization: heatmap renders with correct colors, P&L chart has data points
 - AI chat (mocked): send a message, receive a response, trade execution appears inline
 - SSE resilience: disconnect and verify reconnection
+
+---
+
+## 13. Design Decisions Log
+
+This section records decisions made during document review. All resolutions have been incorporated into the relevant sections above.
+
+| # | Issue | Resolution | Section Updated |
+|---|-------|------------|-----------------|
+| 1 | SSE cadence vs. data source cadence mismatch | SSE pushes only when prices actually change, not on a fixed cadence | 6 — SSE Streaming |
+| 2 | Sparkline data loss on page reload | Backend maintains rolling 50-price history per ticker; served via `GET /api/prices/history`; frontend bootstraps sparklines on load | 6 — Shared Price Cache, 8 — API Endpoints, 10 — Frontend |
+| 3 | "Daily change %" meaningless for simulator | Renamed to "session change %" — percentage change from ticker's price when backend started | 6 — SSE Streaming, 10 — Frontend |
+| 4 | Portfolio snapshots grow unboundedly | Retain last 500 snapshots per user; prune on insert | 7 — Database |
+| 5 | Fractional shares not mentioned in UX | Trade bar explicitly accepts decimals; fractional shares confirmed as supported | 2 — UX, 10 — Frontend |
+| 6 | Watchlist ↔ Market Data coupling undefined | Market data interface exposes `add_ticker`/`remove_ticker`; watchlist endpoints call these on add/remove | 6 — Dynamic Ticker Management |
+| 7 | Chat history loading unspecified | Load last 20 messages for LLM context | 9 — LLM Integration |
+| 8 | Error UX for manual trade failures | Trade API returns `400` with `{error: "..."}` JSON; frontend shows error toast | 8 — API Endpoints, 10 — Frontend |
+| 9 | No trade confirmation feedback | Toast notification on every trade execution (success or failure), both manual and AI-initiated | 2 — UX, 10 — Frontend |
+| 10 | LLM model hardcoded, no fallback | Model configurable via `LLM_MODEL` env var; default remains `openrouter/openai/gpt-oss-120b` | 5 — Env Vars, 9 — LLM Integration |
