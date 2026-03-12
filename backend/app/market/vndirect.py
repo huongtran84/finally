@@ -59,7 +59,12 @@ class VNDirectDataSource(MarketDataSource):
     # ------------------------------------------------------------------
 
     async def start(self) -> None:
-        """Start the background polling loop."""
+        """Start the background polling loop.
+
+        An initial poll is triggered immediately (before the first sleep)
+        so that prices are available as soon as the source starts rather
+        than after a full ``POLL_INTERVAL`` delay.
+        """
         self._running = True
         self._task = asyncio.create_task(self._poll_loop())
 
@@ -95,6 +100,15 @@ class VNDirectDataSource(MarketDataSource):
         self._cache.remove(ticker)
 
     def is_tracking(self, ticker: str) -> bool:
+        """Return True as soon as the ticker is registered for polling.
+
+        Note: this returns True immediately after :meth:`add_ticker` is called,
+        *before* the first HTTP poll has completed.  ``get_price()`` may still
+        return None until the next poll cycle populates the cache.  Callers
+        should always guard against a None return from ``get_price()``.
+        This differs from :class:`SimulatorDataSource`, where ``is_tracking()``
+        only returns True once the initial price has been seeded.
+        """
         return ticker in self._tickers
 
     # ------------------------------------------------------------------
@@ -102,7 +116,11 @@ class VNDirectDataSource(MarketDataSource):
     # ------------------------------------------------------------------
 
     async def _poll_loop(self) -> None:
-        """Continuously poll all tracked tickers."""
+        """Continuously poll all tracked tickers.
+
+        Polls immediately on entry so prices are populated before the first
+        ``_poll_interval`` sleep elapses (eliminates the startup blank period).
+        """
         async with httpx.AsyncClient(timeout=10.0) as client:
             while self._running:
                 await self._poll_all(client)

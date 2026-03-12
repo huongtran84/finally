@@ -22,8 +22,14 @@ class PriceUpdate:
     exchange: str             # "HOSE", "HNX", "UPCOM"
 
     @property
-    def session_change_pct(self) -> float:
-        """Percentage change from session open."""
+    def day_change_pct(self) -> float:
+        """Percentage change from the day's open price.
+
+        Note: this is *not* the same as the session change % shown in the UI.
+        The UI's "session change %" (change since backend started) is computed
+        in :meth:`to_sse_dict` using the ``session_open`` argument supplied by
+        the SSE layer from ``PriceCache.get_session_open()``.
+        """
         if self.open == 0:
             return 0.0
         return round((self.price - self.open) / self.open * 100, 2)

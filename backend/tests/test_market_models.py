@@ -41,18 +41,18 @@ def _make_update(
 
 
 class TestPriceUpdateProperties:
-    def test_session_change_pct_positive(self):
+    def test_day_change_pct_positive(self):
         # price=75_000, open=74_000 → +1.35%
         update = _make_update(price=75_000.0, open_price=74_000.0)
-        assert update.session_change_pct == pytest.approx(1.35, abs=0.01)
+        assert update.day_change_pct == pytest.approx(1.35, abs=0.01)
 
-    def test_session_change_pct_negative(self):
+    def test_day_change_pct_negative(self):
         update = _make_update(price=73_000.0, open_price=74_000.0)
-        assert update.session_change_pct < 0
+        assert update.day_change_pct < 0
 
-    def test_session_change_pct_zero_when_open_is_zero(self):
+    def test_day_change_pct_zero_when_open_is_zero(self):
         update = _make_update(open_price=0.0)
-        assert update.session_change_pct == 0.0
+        assert update.day_change_pct == 0.0
 
     def test_is_ceiling_true_at_ceiling(self):
         update = _make_update(price=79_180.0, ceiling_price=79_180.0)

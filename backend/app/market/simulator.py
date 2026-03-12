@@ -123,11 +123,14 @@ def maybe_apply_jump(price: float) -> float:
 
 
 def round_vnd(price: float) -> float:
-    """Round a VND price to the nearest 100 VND.
+    """Round a VND price to the nearest 100 VND using round-half-up.
 
     Vietnamese stocks on HOSE trade in multiples of 100 VND.
+    Python's built-in ``round()`` uses banker's rounding (round-half-to-even),
+    which would round 75_050 → 75_000 instead of the expected 75_100.
+    ``math.floor(x / 100 + 0.5) * 100`` always rounds half-values upward.
     """
-    return round(price / 100) * 100
+    return math.floor(price / 100 + 0.5) * 100
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +203,14 @@ class SimulatorDataSource(MarketDataSource):
         self._cache.remove(ticker)
 
     def is_tracking(self, ticker: str) -> bool:
+        """Return True once the ticker's initial price has been seeded.
+
+        For the simulator, ``add_ticker()`` synchronously seeds a price, so
+        ``is_tracking()`` returns True immediately after that call.  This
+        differs from :class:`VNDirectDataSource`, where ``is_tracking()``
+        returns True as soon as the ticker is registered but before the first
+        HTTP poll has completed (i.e. ``get_price()`` may still return None).
+        """
         return ticker in self._states
 
     # ------------------------------------------------------------------
