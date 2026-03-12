@@ -337,6 +337,3 @@ class TestVNDirectLifecycle:
     async def test_stop_when_not_started_does_not_raise(self):
         _, source = _make_source(["VNM"])
         await source.stop()  # Should not raise
-
-
-import asyncio
