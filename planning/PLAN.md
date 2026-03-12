@@ -1,34 +1,34 @@
-# FinAlly — AI Trading Workstation
+# FinAlly — AI Trading Workstation (Thị Trường Chứng Khoán Việt Nam)
 
 ## Project Specification
 
 ## 1. Vision
 
-FinAlly (Finance Ally) is a visually stunning AI-powered trading workstation that streams live market data, lets users trade a simulated portfolio, and integrates an LLM chat assistant that can analyze positions and execute trades on the user's behalf. It looks and feels like a modern Bloomberg terminal with an AI copilot.
+FinAlly (Finance Ally) là một workstation giao dịch chứng khoán được hỗ trợ bởi AI, được thiết kế đặc biệt cho **thị trường chứng khoán Việt Nam (HOSE, HNX, UPCoM)**. Hệ thống stream dữ liệu thị trường thời gian thực, cho phép người dùng giao dịch danh mục mô phỏng, và tích hợp trợ lý LLM có thể phân tích danh mục và thực hiện lệnh theo ngôn ngữ tự nhiên (tiếng Việt). Giao diện lấy cảm hứng từ Bloomberg terminal kết hợp ngữ cảnh thị trường Việt Nam.
 
-This is the capstone project for an agentic AI coding course. It is built entirely by Coding Agents demonstrating how orchestrated AI agents can produce a production-quality full-stack application. Agents interact through files in `planning/`.
+Đây là dự án  AI agentic. Được xây dựng hoàn toàn bởi các Coding Agent, minh họa cách các AI agent có thể phối hợp tạo ra ứng dụng full-stack production-quality. Các agent tương tác thông qua các file trong `planning/`.
 
 ## 2. User Experience
 
 ### First Launch
 
-The user runs a single Docker command (or a provided start script). A browser opens to `http://localhost:8000`. No login, no signup. They immediately see:
+Người dùng chạy một lệnh Docker duy nhất (hoặc script khởi động). Trình duyệt mở tại `http://localhost:8000`. Không cần đăng nhập. Ngay lập tức hiển thị:
 
-- A watchlist of 10 default tickers with live-updating prices in a grid
-- $10,000 in virtual cash
-- A dark, data-rich trading terminal aesthetic
-- An AI chat panel ready to assist
+- Danh sách theo dõi gồm 10 mã cổ phiếu Việt Nam mặc định với giá cập nhật trực tiếp
+- **200.000.000 VNĐ** tiền ảo (~$8.000 USD)
+- Giao diện terminal giao dịch chuyên nghiệp, dark theme
+- Bảng chat AI sẵn sàng hỗ trợ bằng **tiếng Việt**
 
 ### What the User Can Do
 
-- **Watch prices stream** — prices flash green (uptick) or red (downtick) with subtle CSS animations that fade
-- **View sparkline mini-charts** — price action beside each ticker in the watchlist. On page load, the frontend fetches recent price history from `GET /api/prices/history` to populate sparklines immediately, then appends new prices from SSE in real time
-- **Click a ticker** to see a larger detailed chart in the main chart area
-- **Buy and sell shares** — market orders only, instant fill at current price, no fees, fractional shares supported. A brief toast notification confirms each executed trade (ticker, side, quantity, price)
-- **Monitor their portfolio** — a heatmap (treemap) showing positions sized by weight and colored by P&L, plus a P&L chart tracking total portfolio value over time
-- **View a positions table** — ticker, quantity, average cost, current price, unrealized P&L, % change
-- **Chat with the AI assistant** — ask about their portfolio, get analysis, and have the AI execute trades and manage the watchlist through natural language
-- **Manage the watchlist** — add/remove tickers manually or via the AI chat
+- **Xem giá stream** — giá nhấp nháy xanh (tăng) hoặc đỏ (giảm); hiển thị màu **tím** khi giá chạm trần (ceiling price) và **xanh lam** khi chạm sàn (floor price) — đặc thù thị trường Việt Nam
+- **Xem biểu đồ nến nhỏ (mini candlestick)** bên cạnh mỗi mã. Khi tải trang, frontend lấy lịch sử từ `GET /api/prices/history`, sau đó cập nhật liên tục qua SSE
+- **Click vào mã cổ phiếu** để xem biểu đồ chi tiết lớn hơn ở khu vực chính
+- **Mua và bán cổ phiếu** — lệnh thị trường (MP), khớp tức thì theo giá hiện tại, không phí, **lô tối thiểu 100 cổ phiếu** (quy định sàn Việt Nam). Toast xác nhận mỗi lệnh đã khớp (mã, chiều, khối lượng, giá)
+- **Theo dõi danh mục** — heatmap (treemap) hiển thị vị thế theo trọng số và tô màu theo P&L; biểu đồ P&L theo thời gian
+- **Xem bảng vị thế** — mã CP, khối lượng, giá vốn bình quân, giá hiện tại, P&L chưa thực hiện, % thay đổi
+- **Chat với trợ lý AI** — hỏi về danh mục, nhận phân tích, để AI thực hiện lệnh và quản lý watchlist bằng **tiếng Việt**
+- **Quản lý watchlist** — thêm/xóa mã thủ công hoặc qua chat AI
 
 ### Visual Design
 
@@ -79,6 +79,46 @@ The user runs a single Docker command (or a provided start script). A browser op
 | Single Docker container | Students run one command; no docker-compose for production, no service orchestration |
 | uv for Python | Fast, modern Python project management; reproducible lockfile; what students should learn |
 | Market orders only | Eliminates order book, limit order logic, partial fills — dramatically simpler portfolio math |
+| Lot size = 100 shares | Tuân thủ quy định tối thiểu của HOSE/HNX/UPCoM; không hỗ trợ cổ phiếu lẻ |
+| Price in VNĐ | Đơn vị tiền tệ chuẩn của thị trường Việt Nam; hiển thị theo định dạng VN |
+| Price limit simulation | Biên độ ±7% (HOSE), ±10% (HNX), ±15% (UPCoM) phản ánh thực tế thị trường |
+
+
+---
+
+## 3b. Đặc Thù Thị Trường Chứng Khoán Việt Nam
+
+### Đơn vị tiền tệ
+- Tất cả giá và số dư hiển thị theo **VNĐ (Việt Nam Đồng)**
+- Giá cổ phiếu Việt Nam thường có 3 chữ số cuối là 00 hoặc 00 (đơn vị đồng), ví dụ: 75.000 VNĐ/cp
+- Hiển thị với dấu chấm phân cách nghìn theo định dạng Việt Nam (75.000, không phải 75,000)
+
+### Quy tắc lô cổ phiếu
+- **HOSE và HNX**: Lô tối thiểu = **100 cổ phiếu**
+- **UPCoM**: Lô tối thiểu = **100 cổ phiếu**
+- Mọi lệnh mua/bán phải là bội số của 100 — backend validate và từ chối nếu không đúng
+
+### Biên độ dao động giá (Price Limit)
+| Sàn | Biên độ | Màu giá trần | Màu giá sàn |
+|-----|---------|--------------|-------------|
+| HOSE | ±7% | Tím (#7B2FBE) | Xanh lam (#0077B6) |
+| HNX | ±10% | Tím (#7B2FBE) | Xanh lam (#0077B6) |
+| UPCoM | ±15% | Tím (#7B2FBE) | Xanh lam (#0077B6) |
+
+- Giá không thể vượt quá ceiling price (giá trần) hoặc thấp hơn floor price (giá sàn) trong cùng phiên
+- Simulator kẹp giá trong biên độ này mỗi chu kỳ cập nhật
+
+### Phiên giao dịch (chỉ áp dụng nếu dùng dữ liệu thật)
+- **ATO** (09:00 – 09:15): Khớp lệnh mở cửa
+- **Liên tục sáng** (09:15 – 11:30)
+- **Nghỉ trưa** (11:30 – 13:00)
+- **Liên tục chiều** (13:00 – 14:30)
+- **ATC** (14:30 – 14:45): Khớp lệnh đóng cửa
+- Simulator chạy 24/7 nhưng có thể cấu hình giới hạn theo giờ giao dịch thật
+
+### Mã cổ phiếu (Ticker format)
+- Mã CP Việt Nam gồm **2–4 ký tự chữ in hoa** (ví dụ: VNM, VCB, HPG, FPTS)
+- Không có tiền tố sàn trong watchlist; sàn được lưu riêng trong metadata
 
 ---
 
@@ -121,25 +161,27 @@ finally/
 ## 5. Environment Variables
 
 ```bash
-# Required: OpenRouter API key for LLM chat functionality
+# Bắt buộc: OpenRouter API key cho tính năng chat AI
 OPENROUTER_API_KEY=your-openrouter-api-key-here
 
-# Optional: Massive (Polygon.io) API key for real market data
-# If not set, the built-in market simulator is used (recommended for most users)
-MASSIVE_API_KEY=
+# Tùy chọn: API key cho dữ liệu thị trường Việt Nam thật (SSI iBoard hoặc VNDirect)
+# Nếu không có, dùng trình mô phỏng giá tích hợp (khuyến nghị cho hầu hết người dùng)
+VNSTOCK_API_KEY=
 
-# Optional: Set to "true" for deterministic mock LLM responses (testing)
+# Tùy chọn: Sàn dữ liệu thực ("SSI" hoặc "VNDIRECT"), mặc định "SSI"
+VNSTOCK_PROVIDER=SSI
+
+# Tùy chọn: Set "true" để dùng mock LLM cho testing
 LLM_MOCK=false
 
-# Optional: Override the LLM model (default: openrouter/openai/gpt-oss-120b)
-# Useful as a fallback if the default model or Cerebras provider is unavailable
+# Tùy chọn: Override LLM model (mặc định: openrouter/openai/gpt-oss-120b)
 LLM_MODEL=openrouter/openai/gpt-oss-120b
 ```
 
 ### Behavior
 
-- If `MASSIVE_API_KEY` is set and non-empty → backend uses Massive REST API for market data
-- If `MASSIVE_API_KEY` is absent or empty → backend uses the built-in market simulator
+- Nếu `VNSTOCK_API_KEY` được set → backend dùng SSI hoặc VNDirect API để lấy dữ liệu thật
+- Nếu `VNSTOCK_API_KEY` trống → backend dùng trình mô phỏng tích hợp
 - If `LLM_MOCK=true` → backend returns deterministic mock LLM responses (for E2E tests)
 - If `LLM_MODEL` is set → backend uses the specified model instead of the default `openrouter/openai/gpt-oss-120b`
 - The backend reads `.env` from the project root (mounted into the container or read via docker `--env-file`)
@@ -154,20 +196,29 @@ Both the simulator and the Massive client implement the same abstract interface.
 
 ### Simulator (Default)
 
-- Generates prices using geometric Brownian motion (GBM) with configurable drift and volatility per ticker
-- Updates at ~500ms intervals
-- Correlated moves across tickers (e.g., tech stocks move together)
-- Occasional random "events" — sudden 2-5% moves on a ticker for drama
-- Starts from realistic seed prices (e.g., AAPL ~$190, GOOGL ~$175, etc.)
-- Runs as an in-process background task — no external dependencies
+- Tạo giá theo mô hình Geometric Brownian Motion (GBM) với drift và volatility cấu hình theo từng mã
+- Cập nhật mỗi ~500ms
+- Các mã cùng ngành di chuyển tương quan (e.g., ngân hàng cùng tăng/giảm)
+- Sự kiện ngẫu nhiên — đột biến 2-5% để tăng tính thực tế
+- **Giá khởi điểm thực tế theo thị trường Việt Nam** (đơn vị VNĐ):
+  - VNM ~75.000, VCB ~92.000, VIC ~42.000, HPG ~28.000, FPT ~130.000
+  - MWG ~45.000, TCB ~25.000, VHM ~38.000, GAS ~85.000, MSN ~68.000
+- **Quy tắc biên độ dao động (price limit)**:
+  - HOSE: ±7% so với giá tham chiếu
+  - HNX: ±10% so với giá tham chiếu
+  - UPCoM: ±15% so với giá tham chiếu
+  - Giá được kẹp trong biên độ này — giá tím (ceiling) và xanh lam (floor)
+- Chạy như background task in-process — không cần dependency ngoài
 
-### Massive API (Optional)
+### SSI/VNDirect Data API (Optional)
 
-- REST API polling (not WebSocket) — simpler, works on all tiers
-- Polls for the union of all watched tickers on a configurable interval
-- Free tier (5 calls/min): poll every 15 seconds
-- Paid tiers: poll every 2-15 seconds depending on tier
-- Parses REST response into the same format as the simulator
+- REST API polling (không WebSocket) — đơn giản hơn, hoạt động ổn định
+- Poll toàn bộ mã đang theo dõi theo interval cấu hình
+- Sử dụng **SSI iBoard API** hoặc **VNDirect API** nếu key được cung cấp
+- Free tier: poll mỗi 15 giây
+- Paid tier: poll mỗi 2–5 giây
+- Parse response về cùng định dạng với simulator
+- Biến môi trường: `VNSTOCK_API_KEY` (thay thế `MASSIVE_API_KEY`)
 
 ### Shared Price Cache
 
@@ -212,7 +263,7 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 
 **users_profile** — User state (cash balance)
 - `id` TEXT PRIMARY KEY (default: `"default"`)
-- `cash_balance` REAL (default: `10000.0`)
+- `cash_balance` REAL (default: `200000000.0`) — đơn vị VNĐ (200 triệu đồng)
 - `created_at` TEXT (ISO timestamp)
 
 **watchlist** — Tickers the user is watching
@@ -226,7 +277,7 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 - `id` TEXT PRIMARY KEY (UUID)
 - `user_id` TEXT (default: `"default"`)
 - `ticker` TEXT
-- `quantity` REAL (fractional shares supported)
+- `quantity` INTEGER — **khối lượng tính theo lô (bội số của 100 cp)**, không hỗ trợ cổ phiếu lẻ trên HOSE/HNX
 - `avg_cost` REAL
 - `updated_at` TEXT (ISO timestamp)
 - UNIQUE constraint on `(user_id, ticker)`
@@ -236,7 +287,7 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 - `user_id` TEXT (default: `"default"`)
 - `ticker` TEXT
 - `side` TEXT (`"buy"` or `"sell"`)
-- `quantity` REAL (fractional shares supported)
+- `quantity` INTEGER — **khối lượng tính theo lô (bội số của 100 cp)**, không hỗ trợ cổ phiếu lẻ trên HOSE/HNX
 - `price` REAL
 - `executed_at` TEXT (ISO timestamp)
 
@@ -256,8 +307,18 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 
 ### Default Seed Data
 
-- One user profile: `id="default"`, `cash_balance=10000.0`
-- Ten watchlist entries: AAPL, GOOGL, MSFT, AMZN, TSLA, NVDA, META, JPM, V, NFLX
+- One user profile: `id="default"`, `cash_balance=200000000.0` (200 triệu VNĐ)
+- Ten watchlist entries (mã cổ phiếu Việt Nam): **VNM, VCB, VIC, HPG, FPT, MWG, TCB, VHM, GAS, MSN**
+  - VNM: Vinamilk (HOSE)
+  - VCB: Vietcombank (HOSE)
+  - VIC: Vingroup (HOSE)
+  - HPG: Hòa Phát Group (HOSE)
+  - FPT: FPT Corporation (HOSE)
+  - MWG: Thế Giới Di Động (HOSE)
+  - TCB: Techcombank (HOSE)
+  - VHM: Vinhomes (HOSE)
+  - GAS: PetroVietnam Gas (HOSE)
+  - MSN: Masan Group (HOSE)
 
 ---
 
@@ -273,7 +334,7 @@ All tables include a `user_id` column defaulting to `"default"`. This is hardcod
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/portfolio` | Current positions, cash balance, total value, unrealized P&L |
-| POST | `/api/portfolio/trade` | Execute a trade: `{ticker, quantity, side}`. Returns `200` with trade confirmation on success, or `400` with `{error: "..."}` on validation failure (insufficient cash, insufficient shares, unknown ticker) |
+| POST | `/api/portfolio/trade` | Thực hiện lệnh: `{ticker, quantity, side}`. Trả `200` khi thành công, hoặc `400` với `{error: "..."}` khi thất bại (số dư không đủ, không đủ CP, mã không hợp lệ, **khối lượng không phải bội số 100**) |
 | GET | `/api/portfolio/history` | Portfolio value snapshots over time (for P&L chart) |
 
 ### Watchlist
@@ -322,10 +383,10 @@ The LLM is instructed to respond with JSON matching this schema:
 {
   "message": "Your conversational response to the user",
   "trades": [
-    {"ticker": "AAPL", "side": "buy", "quantity": 10}
+    {"ticker": "VNM", "side": "buy", "quantity": 200}
   ],
   "watchlist_changes": [
-    {"ticker": "PYPL", "action": "add"}
+    {"ticker": "DGW", "action": "add"}
   ]
 }
 ```
@@ -345,13 +406,16 @@ If a trade fails validation (e.g., insufficient cash), the error is included in 
 
 ### System Prompt Guidance
 
-The LLM should be prompted as "FinAlly, an AI trading assistant" with instructions to:
-- Analyze portfolio composition, risk concentration, and P&L
-- Suggest trades with reasoning
-- Execute trades when the user asks or agrees
-- Manage the watchlist proactively
-- Be concise and data-driven in responses
-- Always respond with valid structured JSON
+LLM được hướng dẫn là **"FinAlly, trợ lý giao dịch chứng khoán Việt Nam"** với các chỉ dẫn:
+- Trả lời **bằng tiếng Việt** (trừ khi người dùng hỏi bằng tiếng Anh)
+- Phân tích cơ cấu danh mục, mức độ tập trung rủi ro và P&L
+- Đề xuất giao dịch có lý do rõ ràng, tham chiếu ngành, chỉ số P/E, P/B theo chuẩn VN
+- Gợi ý theo bội số 100 cổ phiếu (quy tắc lô tối thiểu của HOSE/HNX)
+- Hiểu ngữ cảnh thị trường Việt Nam: giá tham chiếu, giá trần/sàn, phiên ATO/ATC
+- Thực hiện lệnh khi người dùng yêu cầu hoặc đồng ý
+- Quản lý watchlist chủ động
+- Súc tích, có dữ liệu, phân tích theo phong cách chuyên gia chứng khoán Việt
+- Luôn trả lời JSON hợp lệ theo schema
 
 ### LLM Mock Mode
 
@@ -373,7 +437,7 @@ The frontend is a single-page application with a dense, terminal-inspired layout
 - **Portfolio heatmap** — treemap visualization where each rectangle is a position, sized by portfolio weight, colored by P&L (green = profit, red = loss)
 - **P&L chart** — line chart showing total portfolio value over time, using data from `portfolio_snapshots`
 - **Positions table** — tabular view of all positions: ticker, quantity, avg cost, current price, unrealized P&L, % change
-- **Trade bar** — simple input area: ticker field, quantity field (accepts decimals for fractional shares), buy button, sell button. Market orders, instant fill. On success, a brief toast notification confirms the trade (ticker, side, quantity, fill price). On failure, a toast shows the error message from the API (e.g., "Insufficient cash").
+- **Trade bar** — ô nhập liệu gồm: trường mã CP, trường khối lượng (bội số 100, không nhận số lẻ), nút Mua và nút Bán. Lệnh thị trường, khớp tức thì. Khi thành công, toast xác nhận (mã, chiều, khối lượng, giá khớp). Khi thất bại, toast hiển thị lỗi từ API (e.g., "Số dư không đủ", "Không đủ cổ phiếu để bán", "Khối lượng phải là bội số của 100").
 - **AI chat panel** — docked/collapsible sidebar. Message input, scrolling conversation history, loading indicator while waiting for LLM response. Trade executions and watchlist changes shown inline as confirmations.
 - **Header** — portfolio total value (updating live), connection status indicator, cash balance
 
@@ -445,7 +509,8 @@ The container is designed to deploy to AWS App Runner, Render, or any container 
 
 **Backend (pytest)**:
 - Market data: simulator generates valid prices, GBM math is correct, Massive API response parsing works, both implementations conform to the abstract interface
-- Portfolio: trade execution logic, P&L calculations, edge cases (selling more than owned, buying with insufficient cash, selling at a loss)
+- Portfolio: trade execution logic, P&L calculations, edge cases (selling more than owned, buying with insufficient cash, selling at a loss, **quantity not multiple of 100**)
+- Vietnam market rules: price limit enforcement (ceiling/floor), lot size validation, VNĐ formatting
 - LLM: structured output parsing handles all valid schemas, graceful handling of malformed responses, trade validation within chat flow
 - API routes: correct status codes, response shapes, error handling
 
